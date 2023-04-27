@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quiz-db-deployment
+spec:
+  replicas: 1
+  #####
+  selector:
+    matchLabels:
+      type: quiz-db
+  #####
+  strategy:
+    type: RollingUpdate
+  #####
+  template:
+    metadata:
+      labels:
+        type: quiz-db
+    spec:
+      containers:
+        - image: mongo
+          name: quiz-db
+          ports:
+            - containerPort: 27017
+              protocol: TCP
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: admin
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: password
+            - name: MONGO_INITDB_DATABASE
+              value: quizzes
+          resources: { }
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+status: { }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-quiz-db
+spec:
+  ports:
+    - port: 27017
+  selector:
+    type: quiz-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quiz-app-deployment
+spec:
+  replicas: 1
+  #####
+  selector:
+    matchLabels:
+      type: quiz-app
+  #####
+  strategy:
+    type: RollingUpdate
+  #####
+  template:
+    metadata:
+      labels:
+        type: quiz-app
+    spec:
+      containers:
+        - image: io.github.anoobizzz/quizz-app
+          name: quiz-app
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: DB_HOST
+              value: ingress-quiz-db
+          resources: { }
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-quiz
+spec:
+  selector:
+    type: quiz-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
